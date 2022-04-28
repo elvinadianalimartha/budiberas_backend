@@ -37,8 +37,9 @@ Route::delete('product/{id}', [ProductController::class, 'deleteProduct']);
 Route::put('product/{id}', [ProductController::class, 'updateProduct']);
 Route::get('productInTransaction/{id}', [ProductController::class, 'checkProductInTransaction']);
 
-Route::post('productGallery', [ProductGalleryController::class, 'createPhoto']);
+Route::post('productGallery/{id}', [ProductGalleryController::class, 'addPhoto']);
 Route::delete('productGallery/{id}', [ProductGalleryController::class, 'deletePhoto']);
+Route::post('updateCoverPhoto/{id}', [ProductGalleryController::class, 'updateCoverPhoto']);
 
 Route::post('incomingStock', [IncomingStockController::class, 'createIncomingStock']);
 Route::get('addedIncomingStock', [IncomingStockController::class, 'getAddedIncomingStock']);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Helpers\ResponseFormatter;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductGallery;
 use App\Models\TransactionDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -102,6 +103,7 @@ class ProductController extends Controller
 
     public function createProduct(Request $request) {
         $dataProduct = $request->all();
+
         $validator = Validator::make($dataProduct, [
             'category_id' => 'required|exists:product_categories,id,deleted_at,NULL',
             'product_name' => [
@@ -112,6 +114,8 @@ class ProductController extends Controller
             'price' => 'required|numeric',
             'description' => 'required',
             'can_be_retailed' => 'required',
+            'productGalleries' => 'array',
+            'productGalleries.*' => 'image',
         ]);
 
         if($validator->fails()) {
@@ -122,11 +126,30 @@ class ProductController extends Controller
             );
         }
 
-        $validatedProduct = $validator->validated();
-        $product = Product::create($validatedProduct);
+        $product = Product::create([
+            'category_id' => $dataProduct['category_id'],
+            'product_name' => $dataProduct['product_name'],
+            'size' => $dataProduct['size'],
+            'price' => $dataProduct['price'],
+            'description' => $dataProduct['description'],
+            'can_be_retailed' => $dataProduct['can_be_retailed'],
+        ]);
+
+        $photos = $request->file('productGalleries');
+
+        if($request->hasFile('productGalleries')) {
+            foreach($photos as $photo) {
+                $photoUrl = $photo->store('assets/product', 'public');
+
+                ProductGallery::create([
+                    'product_id' => $product->id,
+                    'photo_url' => $photoUrl,
+                ]);
+            }
+        }
         
         return ResponseFormatter::success(
-            $product,
+            $product->load('productGalleries'),
             'Data produk berhasil disimpan'
         );
     }
