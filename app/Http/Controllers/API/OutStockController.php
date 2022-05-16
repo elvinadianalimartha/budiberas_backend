@@ -7,20 +7,27 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use App\Helpers\ResponseFormatter;
+use App\Models\IncomingStock;
 use App\Models\Product;
 use App\Models\OutStock;
+use App\Traits\UpdateStockTrait;
 
 class OutStockController extends Controller
 {
+    use UpdateStockTrait;
+
     public function createOutStock(Request $request) {
         $outStock = $request->all();
 
         $todayDate = Carbon::now()->toDateString();
         $todayTime = Carbon::now()->format('H:i');
 
+        //Show product stock before adding out stock
+        $stockBefore = Product::where('id', '=', $outStock['product_id'])->value('stock');
+
         $validate = Validator::make($outStock, [
             'product_id' => 'required|exists:products,id,deleted_at,NULL',
-            'quantity' => 'required|numeric',
+            'quantity' => "required|numeric|max:$stockBefore",
             'out_status' => 'required|in:Retur ke supplier,Penjualan offline,Penjualan online'
         ]);
 
@@ -32,9 +39,6 @@ class OutStockController extends Controller
             );
         }
 
-        //Show product stock before adding out stock
-        $stockBefore = Product::where('id', '=', $outStock['product_id'])->value('stock');
-
         $outStock['out_date'] = $todayDate;
         $outStock['out_time'] = $todayTime;
 
@@ -42,7 +46,7 @@ class OutStockController extends Controller
         $storeOutStock = OutStock::create($outStock);
 
         //Update product stock
-        $this -> reduceProductStock($storeOutStock['product_id'], $storeOutStock['quantity']);
+        $this->reduceProductStock($storeOutStock['product_id'], $storeOutStock['quantity']);
 
         //Show product stock after out stock
         $stockAfter = Product::where('id', '=', $storeOutStock['product_id'])->value('stock');
@@ -55,34 +59,18 @@ class OutStockController extends Controller
         ]);
     }
 
-    private function reduceProductStock($product_id, $quantity) {
-        $stockBefore = Product::where('id', '=', $product_id)->value('stock');
-
-        $countReduceStock = $stockBefore - $quantity; 
-
-        Product::where('id', '=', $product_id)
-                ->update([
-                    'stock' => $countReduceStock
-                ]);
-    }
-
     public function getOutStock(Request $request) {
         $date = $request->input('date');
 
-        $outStocks = OutStock::with('product:id,product_name,deleted_at')->where('out_status', '=', 'Retur ke supplier');
+        $outStocks = OutStock::with('product:id,product_name,stock,deleted_at')->where('out_status', '=', 'Retur ke supplier');
 
         if($date) {
             $outStocks = $outStocks->where('out_date', '=', $date); 
         }
 
-        //ubah tampilan tanggal jadi format tgl bln thn lengkap
-        foreach($outStocks as $outStock) {
-            $outStock->out_date = Carbon::parse($outStock->out_date)->isoFormat('LL');
-        }
-
         if($outStocks->count() > 0) {
             return ResponseFormatter::success(
-                $outStocks->get(),
+                $outStocks->orderBy('created_at', 'DESC')->get(),
                 'Data stok keluar dari retur ke supplier berhasil diambil'
             );
         } else {
@@ -122,24 +110,41 @@ class OutStockController extends Controller
         }
     }
 
-    private function addProductStock($product_id, $quantity) {
-        $stockBefore = Product::where('id', '=', $product_id)->value('stock');
-        $addedStock = $stockBefore + $quantity;
+    public function countMaxOutQty($id) {
+        $outStock = OutStock::findorFail($id);
+        $product_id = $outStock->product_id;
 
-        Product::where('id', '=', $product_id)
-                ->update([
-                    'stock' => $addedStock
-                ]);
+        $totalIncomingStock = IncomingStock::where('product_id', '=', $product_id)->sum('quantity');
+
+        $totalOutStock = OutStock::where('id', '!=', $id)
+                                ->where('product_id', '=', $product_id)
+                                ->sum('quantity');
+
+        $maxOutQty = $totalIncomingStock - $totalOutStock;
+        return $maxOutQty;
     }
 
     public function updateOutStock(Request $request, $id) {
         $outStock = OutStock::findorFail($id);
-        $product_id = OutStock::where('id', '=', $id)->value('product_id');
+
+        $product_id = $outStock->product_id;
+        $out_qty = $outStock->quantity;
 
         $updateData = $request->all();
 
+        $product = Product::where('id', '=', $product_id);
+        $stockBefore = $product->value('stock');
+
+        $countMaxQty = $this->countMaxOutQty($id);
+
+        if($stockBefore == 0) {
+            $maxOutQty = $out_qty;
+        } else {
+            $maxOutQty = $countMaxQty;
+        }
+
         $validate = Validator::make($updateData, [
-            'quantity' => 'numeric',
+            'quantity' => "numeric|max:$maxOutQty",
         ]);
 
         if($validate->fails()) {
@@ -151,18 +156,28 @@ class OutStockController extends Controller
         }
 
         //Count current product stock
-        $stockBefore = Product::where('id', '=', $product_id)->value('stock');
         $quantityDiff = $updateData['quantity'] - $outStock->quantity;
         $stockAfter = $stockBefore - $quantityDiff;
 
         $outStock->quantity = $updateData['quantity'];
 
         if($outStock->save()) {
-            Product::where('id', '=', $product_id)
-                ->update([
-                    'stock' => $stockAfter
+            $product->update([
+                'stock' => $stockAfter
+            ]);
+            
+            if($product->value('stock') < 1) {
+                $product->update([
+                    'stock_status' => 'Tidak aktif'
                 ]);
-
+            } else {
+                if($product->value('stock_notes') != 'Nonactivate by owner') {
+                    $product->update([
+                        'stock_status' => 'Aktif'
+                    ]);
+                }
+            }
+            
             return ResponseFormatter::success(
                 $outStock,
                 'Jumlah stok keluar berhasil diedit'

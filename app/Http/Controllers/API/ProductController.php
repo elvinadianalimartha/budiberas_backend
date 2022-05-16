@@ -14,13 +14,11 @@ use Illuminate\Validation\Rule;
 class ProductController extends Controller
 {
     public function getAllProducts(Request $request) {
-        $this->updateStatusStock();
-
-        $limit = $request->input('limit'); //untuk pagination
         $categoryId = $request->input('categoryId');
         $stockStatus = $request->input('stockStatus');
         
-        //productCategory dan productGalleries ambil dari function yg udah dibuat di model. Nanti outputnya jadi snake_case (product_category, product_galleries)
+        //productCategory dan productGalleries ambil dari function yg udah dibuat di model. 
+        //Nanti outputnya jadi snake_case (product_category, product_galleries)
         $product = Product::with(['productCategory', 'productGalleries']);
 
         if($categoryId) {
@@ -33,7 +31,7 @@ class ProductController extends Controller
 
         if($product->count() > 0) {
             return ResponseFormatter::success(
-                $product->paginate($limit), //kalo gamau pake pagination, paginatenya ganti get()
+                $product->orderBy('created_at', 'DESC')->get(),
                 'Data produk berhasil diambil'
             );
         } else {
@@ -45,10 +43,29 @@ class ProductController extends Controller
         }
     }
 
+    public function searchProductByName(Request $request) {
+        $searchQuery = $request->input('query');
+
+        $product = Product::with(['productCategory', 'productGalleries']);
+
+        $product = $product->where('product_name', 'like', "%$searchQuery%");
+
+        if($product->count() > 0) {
+            return ResponseFormatter::success(
+                $product->get(),
+                'Data produk berhasil diambil'
+            );
+        } else {
+            return ResponseFormatter::error(
+                null, 
+                'Data produk dengan nama tersebut tidak ada',
+                404,
+            );
+        }
+    }
+
     //ini cadangan kalo sampe filtering category di get all products gak berhasil
     public function getProductByCategoryName(Request $request) {
-        $this->updateStatusStock();
-
         $limit = $request->input('limit'); //untuk pagination
         $category = $request->input('category');
 
@@ -72,10 +89,34 @@ class ProductController extends Controller
         }
     }
 
+    //untuk list dropdown produk pada kelola stok keluar
+    public function getAvailableStockProduct(Request $request) {
+        $dataProduct = Product::with(['productCategory', 'productGalleries']);
+        
+        $product = $dataProduct->where('stock', '>', 0);
+
+        $searchQuery = $request->input('query');
+
+        if($searchQuery) {
+            $product = $product->where('product_name', 'like', "%$searchQuery%");
+        }
+
+        if($product->count() > 0) {
+            return ResponseFormatter::success(
+                $product->orderBy('created_at', 'DESC')->get(),
+                'Data produk berhasil diambil'
+            );
+        } else {
+            return ResponseFormatter::error(
+                null, 
+                'Belum ada produk yang stoknya lebih dari 0',
+                404,
+            );
+        }
+    }
+
     //untuk list dropdown produk asal saat pengalihan stok
     public function getRetailedProduct(Request $request) {
-        $this->updateStatusStock();
-
         $category = $request->input('category');
 
         $product = Product::select('product_name')
@@ -203,14 +244,6 @@ class ProductController extends Controller
         $product->size = $updateData['size'];
         $product->price = $updateData['price'];
         $product->description = $updateData['description'];
-        $product->stock_status = $updateData['stock_status'];
-
-        if($product->stock > 0 && $updateData['stock_status'] == 'Tidak aktif') {
-            $product->stock_notes = 'Nonactivate by owner';
-        } else {
-            $product->stock_notes = null;
-        }
-        
         $product->can_be_retailed = $updateData['can_be_retailed'];
 
         if($product->save()) {
@@ -222,6 +255,54 @@ class ProductController extends Controller
             return ResponseFormatter::error(
                 null,
                 'Data produk gagal diedit',
+                400,
+            );
+        }
+    }
+
+    public function updateActivationProduct(Request $request, $id) {
+        $product = Product::findorFail($id);
+
+        $updateData = $request->input('stock_status');
+
+        $product->stock_status = $updateData;
+
+        if($product->stock > 0 && $updateData == 'Tidak aktif') {
+            $product->stock_notes = 'Nonactivate by owner';
+        } else {
+            $product->stock_notes = null;
+        }
+
+        if($product->save()) {
+            return ResponseFormatter::success(
+                $product,
+                'Status produk berhasil diperbarui'
+            );
+        } else {
+            return ResponseFormatter::error(
+                null,
+                'Status produk gagal diperbarui',
+                400,
+            );
+        }
+    }
+
+    public function updateProductPrice(Request $request, $id) {
+        $product = Product::findorFail($id);
+
+        $updateData = $request->input('price');
+
+        $product->price = $updateData;
+
+        if($product->save()) {
+            return ResponseFormatter::success(
+                $product,
+                'Harga produk berhasil diperbarui'
+            );
+        } else {
+            return ResponseFormatter::error(
+                null,
+                'Harga produk gagal diperbarui',
                 400,
             );
         }
@@ -242,14 +323,5 @@ class ProductController extends Controller
                 404,
             );
         }
-    }
-
-    public function updateStatusStock() {
-        Product::where('stock', '=', 0)
-                ->update(['stock_status' => 'Tidak aktif']);
-        
-        Product::where('stock', '>', 0)
-                ->where('stock_notes', '!=', 'Nonactivate by owner')
-                ->update(['stock_status' => 'Aktif']);
     }
 }

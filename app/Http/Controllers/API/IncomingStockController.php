@@ -9,9 +9,12 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Product;
+use App\Traits\UpdateStockTrait;
 
 class IncomingStockController extends Controller
 {
+    use UpdateStockTrait;
+    
     public function createIncomingStock(Request $request) {
         $incomeStock = $request->all();
 
@@ -55,23 +58,19 @@ class IncomingStockController extends Controller
         ]);
     }
 
-    private function addProductStock($product_id, $quantity) {
-        $stockBefore = Product::where('id', '=', $product_id)->value('stock');
-        $addedStock = $stockBefore + $quantity;
-
-        Product::where('id', '=', $product_id)
-                ->update([
-                    'stock' => $addedStock
-                ]);
-    }
-
-    public function getAddedIncomingStock(Request $request) {
+    public function getIncomingStock(Request $request) {
         $date = $request->input('date');
 
-        $addedIncomingStocks = IncomingStock::with('product:id,product_name,deleted_at')->where('incoming_status', '=', 'Tambah stok');
+        $status = $request->input('status');
+
+        $addedIncomingStocks = IncomingStock::with('product:id,product_name,deleted_at');
 
         if($date) {
             $addedIncomingStocks = $addedIncomingStocks->where('incoming_date', '=', $date); 
+        }
+
+        if($status) {
+            $addedIncomingStocks = $addedIncomingStocks->where('incoming_status', '=', $status);
         }
 
         //ubah tampilan tanggal jadi format tgl bln thn lengkap
@@ -81,40 +80,13 @@ class IncomingStockController extends Controller
 
         if($addedIncomingStocks->count() > 0) {
             return ResponseFormatter::success(
-                $addedIncomingStocks->get(),
-                'Data stok masuk yang ditambahkan pemilik berhasil diambil'
+                $addedIncomingStocks->orderBy('created_at', 'DESC')->get(),
+                'Data stok masuk berhasil diambil'
             );
         } else {
             return ResponseFormatter::error(
                 null,
-                'Data stok masuk yang ditambahkan pemilik belum ada',
-                404,
-            );
-        }                                       
-    }
-
-    public function getReturnIncomingStock(Request $request) {
-        $date = $request->input('date');
-
-        $returnIncomingStocks = IncomingStock::with('product:id,product_name,deleted_at')->where('incoming_status', '=', 'Retur dari pembeli');
-        
-        if($date) {
-            $returnIncomingStocks = $returnIncomingStocks->where('incoming_date', '=', $date); 
-        }
-
-        foreach($returnIncomingStocks as $incomingStock) {
-            $incomingStock->incoming_date = Carbon::parse($incomingStock->incoming_date)->isoFormat('LL');
-        }
-
-        if($returnIncomingStocks->count() > 0) {
-            return ResponseFormatter::success(
-                $returnIncomingStocks->get(),
-                'Data stok masuk dari retur pembeli berhasil diambil'
-            );
-        } else {
-            return ResponseFormatter::error(
-                null,
-                'Data stok masuk dari retur pembeli belum ada',
+                'Data stok masuk belum ada',
                 404,
             );
         }                                       
@@ -146,17 +118,6 @@ class IncomingStockController extends Controller
                 400,
             );
         }
-    }
-
-    private function reduceProductStock($product_id, $quantity) {
-        $stockBefore = Product::where('id', '=', $product_id)->value('stock');
-
-        $countReduceStock = $stockBefore - $quantity; 
-
-        Product::where('id', '=', $product_id)
-                ->update([
-                    'stock' => $countReduceStock
-                ]);
     }
 
     public function updateIncomingStock(Request $request, $id) {
