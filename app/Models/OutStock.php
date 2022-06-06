@@ -33,6 +33,6 @@ class OutStock extends Model
     //set relationship with other table
     //FK
     public function product() {
-        return $this->belongsTo(Product::class, 'product_id', 'id');
+        return $this->belongsTo(Product::class, 'product_id', 'id')->withTrashed();
     }
 }
