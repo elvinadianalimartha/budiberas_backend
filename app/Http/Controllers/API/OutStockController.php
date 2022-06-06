@@ -10,6 +10,8 @@ use App\Helpers\ResponseFormatter;
 use App\Models\IncomingStock;
 use App\Models\Product;
 use App\Models\OutStock;
+use App\Models\ShiftStock;
+use App\Models\ShiftStockDestination;
 use App\Traits\UpdateStockTrait;
 
 class OutStockController extends Controller
@@ -116,11 +118,17 @@ class OutStockController extends Controller
 
         $totalIncomingStock = IncomingStock::where('product_id', '=', $product_id)->sum('quantity');
 
+        //tujuan pengalihan menerima stok dr produk asal shg terhitung sbg in stock
+        $totalShiftIn = ShiftStockDestination::where('product_id', '=', $product_id)->sum('quantity');
+
         $totalOutStock = OutStock::where('id', '!=', $id)
                                 ->where('product_id', '=', $product_id)
                                 ->sum('quantity');
 
-        $maxOutQty = $totalIncomingStock - $totalOutStock;
+        //stok yg dialihkan terhitung sbg out stock
+        $totalShiftOut = ShiftStock::where('product_id', '=', $product_id)->sum('quantity');
+
+        $maxOutQty = $totalIncomingStock + $totalShiftIn - $totalOutStock - $totalShiftOut;
         return $maxOutQty;
     }
 
@@ -128,7 +136,6 @@ class OutStockController extends Controller
         $outStock = OutStock::findorFail($id);
 
         $product_id = $outStock->product_id;
-        $out_qty = $outStock->quantity;
 
         $updateData = $request->all();
 
@@ -137,14 +144,8 @@ class OutStockController extends Controller
 
         $countMaxQty = $this->countMaxOutQty($id);
 
-        if($stockBefore == 0) {
-            $maxOutQty = $out_qty;
-        } else {
-            $maxOutQty = $countMaxQty;
-        }
-
         $validate = Validator::make($updateData, [
-            'quantity' => "numeric|max:$maxOutQty",
+            'quantity' => "numeric|max:$countMaxQty",
         ]);
 
         if($validate->fails()) {
@@ -156,7 +157,10 @@ class OutStockController extends Controller
         }
 
         //Count current product stock
+        //Cari selisih antara qty yg diinput dgn out qty sebelumnya. Kalau hasilnya (-) berarti qty_Baru < qty_Lama, berlaku sebaliknya
         $quantityDiff = $updateData['quantity'] - $outStock->quantity;
+        
+        //Cari stock after edit. Kalau hasil selisihnya (-), maka stock afternya bertambah [krn (-)(-) = (+)]
         $stockAfter = $stockBefore - $quantityDiff;
 
         $outStock->quantity = $updateData['quantity'];
