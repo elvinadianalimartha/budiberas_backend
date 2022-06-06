@@ -11,6 +11,22 @@ use Illuminate\Support\Facades\File;
 
 class ProductGalleryController extends Controller
 {
+    public function getPhoto($productId){
+        $photo = ProductGallery::where('product_id', '=', $productId);
+        if($photo->count() > 0) {
+            return ResponseFormatter::success(
+                $photo->get(),
+                'Data foto berhasil diambil'
+            );
+        } else {
+            return ResponseFormatter::error(
+                null,
+                'Data foto gagal diambil',
+                400,
+            );
+        }
+    }
+
     public function addPhoto(Request $request, $productId) {
         $data = $request->all();
 
@@ -61,7 +77,7 @@ class ProductGalleryController extends Controller
         }
     }
 
-    public function updateCoverPhoto(Request $request, $id) {
+    public function updatePhoto(Request $request, $id) {
         $item = ProductGallery::findorFail($id);
 
         $data = $request->all();
@@ -90,11 +106,11 @@ class ProductGalleryController extends Controller
             File::delete(public_path().'/storage/'.$urlBeforeUpdated);
             return ResponseFormatter::success(
                 $item,
-                'Foto sampul berhasil diperbarui'
+                'Foto produk berhasil diperbarui'
             );
         } else {
             return response([
-                'message' => 'Foto sampul gagal diperbarui',
+                'message' => 'Foto produk gagal diperbarui',
                 'data' => null,
             ],400);
         }
