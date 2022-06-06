@@ -19,7 +19,7 @@ class IncomingStockController extends Controller
         $incomeStock = $request->all();
 
         $todayDate = Carbon::now()->toDateString();
-        $todayTime = Carbon::now()->format('H:i');
+        $todayTime = Carbon::now()->format('H:i:s');
 
         $validate = Validator::make($incomeStock, [
             'product_id' => 'required|exists:products,id,deleted_at,NULL',

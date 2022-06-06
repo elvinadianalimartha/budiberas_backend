@@ -20,7 +20,7 @@ class OutStockController extends Controller
         $outStock = $request->all();
 
         $todayDate = Carbon::now()->toDateString();
-        $todayTime = Carbon::now()->format('H:i');
+        $todayTime = Carbon::now()->format('H:i:s');
 
         //Show product stock before adding out stock
         $stockBefore = Product::where('id', '=', $outStock['product_id'])->value('stock');
