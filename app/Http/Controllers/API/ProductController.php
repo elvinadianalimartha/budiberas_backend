@@ -117,16 +117,9 @@ class ProductController extends Controller
 
     //untuk list dropdown produk asal saat pengalihan stok
     public function getRetailedProduct(Request $request) {
-        $category = $request->input('category');
-
-        $product = Product::select('product_name')
-                    ->where('can_be_retailed', '=', 1);
-
-        if($category) {
-            $product = $product->whereHas('productCategory', function ($q) use ($category) { //kalo mau ikut nampilin product categorynya bisa jg pake with
-                            $q->where('category_name', '=', $category);
-                        });
-        }
+        $product = Product::with(['productCategory', 'productGalleries'])
+                    ->where('can_be_retailed', '=', 1)
+                    ->where('stock', '>', 0);
 
         if($product->count() > 0) {
             return ResponseFormatter::success(
@@ -137,6 +130,29 @@ class ProductController extends Controller
             return ResponseFormatter::error(
                 null, 
                 'Data produk yang bisa diecer tidak ada',
+                404,
+            );
+        }
+    }
+
+    public function getDestinationProduct($sourceProductId) {
+        $sourceSize = Product::findorFail($sourceProductId)->size;
+        $sourceCategory = Product::findorFail($sourceProductId)->category_id;
+
+        $product = Product::with(['productCategory', 'productGalleries'])
+                    ->where('id', '!=', $sourceProductId)
+                    ->where('size', '<', $sourceSize)
+                    ->where('category_id', '=', $sourceCategory);
+
+        if($product->count() > 0) {
+            return ResponseFormatter::success(
+                $product->get(), 
+                'Data produk tujuan berhasil diambil'
+            );
+        } else {
+            return ResponseFormatter::error(
+                null, 
+                'Data produk tujuan tidak ada',
                 404,
             );
         }
@@ -309,19 +325,8 @@ class ProductController extends Controller
     }
 
     public function checkProductInTransaction($id) {
-        $productInTransaction = TransactionDetail::where('product_id', '=', $id)->get();
+        $productInTransaction = TransactionDetail::where('product_id', '=', $id)->get()->count();
 
-        if($productInTransaction->count() > 0) {
-            return ResponseFormatter::success(
-                $productInTransaction, 
-                'Data berhasil diambil'
-            );
-        } else {
-            return ResponseFormatter::error(
-                null, 
-                'Data tidak ada',
-                404,
-            );
-        }
+        return $productInTransaction;
     }
 }

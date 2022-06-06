@@ -61,6 +61,14 @@ class Product extends Model
         return $this->hasMany(OutStock::class, 'product_id', 'id');
     }
 
+    public function shiftStocks(){
+        return $this->hasMany(ShiftStock::class, 'product_id', 'id');
+    }
+
+    public function shiftStockDestinations(){
+        return $this->hasMany(ShiftStockDestination::class, 'product_id', 'id');
+    }
+
     // public function carts() {
     //     return $this->hasMany(Cart::class, 'product_id', 'id');
     // }
