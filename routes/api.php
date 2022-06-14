@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\API\CartController;
 use App\Http\Controllers\API\ProductController;
 use App\Http\Controllers\API\CategoryController;
 use App\Http\Controllers\API\ProductGalleryController;
 use App\Http\Controllers\API\IncomingStockController;
 use App\Http\Controllers\API\OutStockController;
 use App\Http\Controllers\API\ShiftStockController;
+use App\Http\Controllers\API\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,9 +22,22 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::middleware(['auth:sanctum'])->group(function(){
+    //CUSTOMER
+    Route::post('user/logout', [UserController::class, 'logout']);
+
+    Route::get('carts', [CartController::class, 'getCart']);
+    Route::post('cart', [CartController::class, 'addToCart']);
+    Route::post('qtyCart/{id}', [CartController::class, 'updateQty']);
+    Route::put('noteInCart/{id}', [CartController::class, 'updateOrderNotes']);
+    Route::delete('cart/{id}', [CartController::class, 'deleteCart']);
 });
+
+Route::post('user/login', [UserController::class, 'login']);
+Route::post('user/register', [UserController::class, 'register']);
+
+Route::get('localRegencies', [UserController::class, 'getLocalRegencies']);
+Route::get('localDistricts', [UserController::class, 'getLocalDistricts']);
 
 Route::get('categories', [CategoryController::class, 'getAllCategories']);
 Route::get('products', [ProductController::class, 'getAllProducts']);

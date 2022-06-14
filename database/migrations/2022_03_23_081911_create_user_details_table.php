@@ -25,7 +25,7 @@ class CreateUserDetailsTable extends Migration
             $table->double('latitude');
             $table->double('longitude');
             $table->string('phone_number');
-            $table->string('detail_status');
+            $table->boolean('default_address');
 
             $table->softDeletes();
             $table->timestamps();

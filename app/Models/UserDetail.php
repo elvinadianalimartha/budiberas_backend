@@ -21,7 +21,7 @@ class UserDetail extends Model
         'latitude',
         'longitude',
         'phone_number',
-        'detail_status',
+        'default_address',
     ];
 
     public function getDeletedAtAttribute(){

@@ -16,7 +16,7 @@ class AddAddressAttributesToShopTable extends Migration
         Schema::table('shop_info', function (Blueprint $table) {
             $table->string('shop_regency')->after('fcm_token');
             $table->string('shop_district')->after('shop_regency');
-            $table->string('address_notes')->after('shop_address');
+            $table->string('address_notes')->after('shop_address')->nullable();
             $table->double('latitude')->after('address_notes');
             $table->double('longitude')->after('latitude');
         });

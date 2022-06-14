@@ -14,7 +14,7 @@ class AddAddressNoteToUserDetailTable extends Migration
     public function up()
     {
         Schema::table('user_details', function (Blueprint $table) {
-            $table->string('address_notes')->after('address');
+            $table->string('address_notes')->after('address')->nullable();
         });
     }
 
