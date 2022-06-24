@@ -109,6 +109,14 @@ class UserController extends Controller
         );
     }
 
+    public function fetchDataUser(Request $request) {
+        $user = $request->user();
+        return ResponseFormatter::success(
+            $user,
+            'Berhasil mengambil data user by token',
+        );
+    }
+
     //get data kabupaten di DIY
     public function getLocalRegencies() {
         $DIYprovinceId = Province::where('name', '=', 'DI YOGYAKARTA')->value('id');
