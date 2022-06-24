@@ -21,7 +21,7 @@ class CreateTransactionDetailsTable extends Migration
 
             $table->integer('quantity');
             $table->double('subtotal');
-            $table->string('order_notes');
+            $table->string('order_notes')->nullable();
 
             $table->timestamps();
         });

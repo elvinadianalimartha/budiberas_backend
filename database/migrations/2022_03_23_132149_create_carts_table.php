@@ -20,7 +20,8 @@ class CreateCartsTable extends Migration
             $table->unsignedBigInteger('user_id');
             
             $table->integer('quantity');
-            $table->string('order_notes');
+            $table->string('order_notes')->nullable();
+            $table->bool('is_selected')->default(false);
 
             $table->timestamps();
         });

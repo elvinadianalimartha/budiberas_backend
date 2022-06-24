@@ -25,12 +25,15 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum'])->group(function(){
     //CUSTOMER
     Route::post('user/logout', [UserController::class, 'logout']);
+    Route::get('user/fetchData', [UserController::class, 'fetchDataUser']);
 
     Route::get('carts', [CartController::class, 'getCart']);
     Route::post('cart', [CartController::class, 'addToCart']);
-    Route::post('qtyCart/{id}', [CartController::class, 'updateQty']);
+    Route::put('qtyCart/{id}', [CartController::class, 'updateQty']);
     Route::put('noteInCart/{id}', [CartController::class, 'updateOrderNotes']);
     Route::delete('cart/{id}', [CartController::class, 'deleteCart']);
+    Route::put('cartIsSelected/{id}', [CartController::class, 'updateIsSelected']);
+    Route::put('allCartIsSelected', [CartController::class, 'updateIsSelectedAllCart']);
 });
 
 Route::post('user/login', [UserController::class, 'login']);

@@ -15,6 +15,7 @@ class Cart extends Model
         'user_id',
         'quantity',
         'order_notes',
+        'is_selected',
     ];
 
     public function getCreatedAtAttribute(){
