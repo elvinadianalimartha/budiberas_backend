@@ -184,4 +184,24 @@ class CartController extends Controller
             "All cart is selected = $value"
         );
     }
+
+    //get selected cart (for order confirmation)
+    public function getSelectedCart(){
+        $carts = Cart::with('product.productGalleries','product.productCategory')
+                    ->where('user_id', '=', Auth::user()->id)
+                    ->where('is_selected', '=', 1);
+        
+        if($carts->count() > 0) {
+            return ResponseFormatter::success(
+                $carts->orderBy('created_at', 'DESC')->get(), 
+                'Data keranjang terpilih berhasil ditampilkan'
+            );
+        } else {
+            return ResponseFormatter::error(
+                null, 
+                'Data keranjang terpilih belum ada',
+                404,
+            );
+        }
+    }
 }
