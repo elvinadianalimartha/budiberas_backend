@@ -10,6 +10,8 @@ class ShopInfo extends Model
 {
     use HasFactory;
 
+    public $table = "shop_info";
+
     protected $fillable = [
         'email',
         'password',
